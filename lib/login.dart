@@ -1,11 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For SystemUiOverlayStyle
+import 'package:http/http.dart' as http;
+import 'dart:convert'; // For encoding/decoding JSON
+import 'homePage.dart'; // Import your HomePage
 import 'signup.dart';
 
 class LoginPage extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  Future<void> _login(BuildContext context) async {
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
+
+    // Make sure the form is valid before making the API request
+    if (_formKey.currentState?.validate() ?? false) {
+      final response = await http.post(
+        Uri.parse(
+          'http://127.0.0.1:8000/signin/',
+        ), // Replace with your FastAPI URL
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({'email': email, 'password': password}),
+      );
+      print(json.decode(response.body));
+      if (response.statusCode == 200) {
+        // If login is successful
+        final responseData = json.decode(response.body);
+        final String username =
+            responseData["username"]; // Get the username from the response
+
+        // Navigate to HomePage and pass the username
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage(username: username)),
+        );
+      } else {
+        // If login fails, show the error message
+        final errorData = json.decode(response.body);
+        _showError(context, errorData['detail']);
+      }
+    }
+  }
+
+  // Show error message in a dialog
+  void _showError(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: Text('Error'),
+            content: Text(message),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                },
+                child: Text('Close'),
+              ),
+            ],
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,12 +160,7 @@ class LoginPage extends StatelessWidget {
                         child: MaterialButton(
                           minWidth: double.infinity,
                           height: 60,
-                          onPressed: () {
-                            if (_formKey.currentState?.validate() ?? false) {
-                              // Proceed with the login logic
-                              print("Login successful!");
-                            }
-                          },
+                          onPressed: () => _login(context),
                           color: Color(0xff0095FF),
                           elevation: 0,
                           shape: RoundedRectangleBorder(

@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For SystemUiOverlayStyle
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'login.dart';
+import 'homePage.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -16,19 +19,79 @@ class _SignupPageState extends State<SignupPage> {
 
   final _formKey = GlobalKey<FormState>();
 
+  Future<void> registerUser() async {
+    final String email = emailController.text;
+    final String password = passwordController.text;
+    final String confirmPassword = confirmPasswordController.text;
+    final String username = usernameController.text;
+
+    final userData = {
+      'email': email,
+      'password': password,
+      'confirm_password': confirmPassword,
+      'username': username,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/register/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(userData),
+      );
+
+      final responseBody = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(username: responseBody['username']),
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Error'),
+                content: Text(responseBody['detail'] ?? 'Registration failed.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('OK'),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text('Error'),
+              content: Text('Something went wrong. Please try again later.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         backgroundColor: Colors.white,
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           icon: Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
         ),
       ),
@@ -36,113 +99,42 @@ class _SignupPageState extends State<SignupPage> {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 40),
           height: MediaQuery.of(context).size.height - 50,
-          width: double.infinity,
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                Column(
-                  children: <Widget>[
-                    Text(
-                      "Sign up",
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      "Create an account, It's free ",
-                      style: TextStyle(fontSize: 15, color: Colors.grey[700]),
-                    ),
-                  ],
+                Text(
+                  "Sign up",
+                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
                 ),
-                Column(
-                  children: <Widget>[
-                    inputFile(
-                      label: "Username",
-                      controller: usernameController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'username cannot be empty';
-                        }
-                        return null;
-                      },
-                    ),
-                    inputFile(
-                      label: "Email",
-                      controller: emailController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email cannot be empty';
-                        } else if (!value.contains('@') ||
-                            !value.contains('.')) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                    inputFile(
-                      label: "Password",
-                      obscureText: true,
-                      controller: passwordController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password cannot be empty';
-                        } else if (value.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    inputFile(
-                      label: "Confirm Password",
-                      obscureText: true,
-                      controller: confirmPasswordController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password cannot be empty';
-                        } else if (value.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        } else {
-                          if (value != passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+                inputFile(label: "Username", controller: usernameController),
+                inputFile(label: "Email", controller: emailController),
+                inputFile(
+                  label: "Password",
+                  obscureText: true,
+                  controller: passwordController,
                 ),
-                Container(
-                  padding: EdgeInsets.only(top: 3, left: 3),
-                  decoration: BoxDecoration(
+                inputFile(
+                  label: "Confirm Password",
+                  obscureText: true,
+                  controller: confirmPasswordController,
+                ),
+                MaterialButton(
+                  minWidth: double.infinity,
+                  height: 60,
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      registerUser();
+                    }
+                  },
+                  color: Color(0xff0095FF),
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
-                    border: Border.all(color: Colors.black),
                   ),
-                  child: MaterialButton(
-                    minWidth: double.infinity,
-                    height: 60,
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Handle successful signup here
-                        print('Sign up successful');
-                      }
-                    },
-                    color: Color(0xff0095FF),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Text(
-                      "Sign up",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
-                    ),
+                  child: Text(
+                    "Sign up",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ),
                 Row(
@@ -150,12 +142,13 @@ class _SignupPageState extends State<SignupPage> {
                   children: <Widget>[
                     Text("Already have an account?"),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => LoginPage()),
-                        );
-                      },
+                      onPressed:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginPage(),
+                            ),
+                          ),
                       child: Text(
                         "Login",
                         style: TextStyle(
@@ -175,12 +168,10 @@ class _SignupPageState extends State<SignupPage> {
   }
 }
 
-// Widget for input fields with validation
 Widget inputFile({
   required String label,
   TextEditingController? controller,
   bool obscureText = false,
-  String? Function(String?)? validator,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,13 +188,10 @@ Widget inputFile({
       TextFormField(
         controller: controller,
         obscureText: obscureText,
-        validator: validator,
         decoration: InputDecoration(
           contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 10),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.grey[400]!, // Ensure the color is non-nullable
-            ),
+            borderSide: BorderSide(color: Colors.grey[400]!),
           ),
           border: OutlineInputBorder(
             borderSide: BorderSide(color: Colors.grey[400]!),
